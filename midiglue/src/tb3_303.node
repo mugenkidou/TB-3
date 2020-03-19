@@ -1,0 +1,164 @@
+<Comment>
+Copyright (c) 2020, mugenkidou, All Rights Reserved.
+
+<I/O>
+input MidiPacket : MIDI input
+output MidiSysEx : Output
+output String : Parameter Name
+output String : Parameter Value
+
+<Description>
+Construct Roland style SysEx data of TB-303 style controller for TB-3.
+
+<Parameter>
+
+<Setup>
+
+<Code>
+std::vector<uint8_t> message{0xf0, 0x41, 0x10, 0x00, 0x00, 0x7b, 0x12};
+MidiSysEx sysex{0u, nullptr};
+struct TB3 {
+    std::string name;
+    uint8_t cc;
+    uint8_t dd;
+    uint8_t min;
+    uint8_t max;
+    uint8_t offset;     // Center value
+    uint8_t length;     // 0:No Output, 1:1Byte, 2:2Bytes
+    uint8_t strType;    // 0:Number, 1:OFF/ON
+};
+const TB3 paramData[] = {
+    {"TUNE",            0x02, 0x00, 11, 115, 63, 14, 0},
+    {"CUTOFF",          0x0A, 0x00,  0, 127,  0,  2, 0},
+    {"RESONANCE",       0x0A, 0x02,  0, 127,  0,  2, 0},
+    {"ENV MOD",         0x0A, 0x04,  0, 127,  0,  2, 0},
+    {"DECAY",           0x0A, 0x07,  0, 127,  0,  1, 0},
+    {"ACCENT",          0x14, 0x0E,  0, 127,  0,  2, 0},
+};
+const TB3 paramData_waveform = 
+    {"WAVEFORM",        0x08, 0x00,  0,   1,  0,  1, 1};
+enum tb3_params {
+	TUNE = 0, CUTOFF, RESONANCE, ENV_MOD, DECAY, ACCENT, WAVEFORM = 16
+};
+const std::string offOnStr[] = {"OFF", "ON"};
+const std::string waveformStr[] = {"SAW", "SQR"};
+static Int waveform = 0; // SAW:0, SQR:1
+Int tuneValue;
+
+auto noFunction = [](){
+    out1 = Midiglue::make_string("-");
+    out2 = Midiglue::make_string("-");
+};
+
+if (@in0){
+    MidiPacket packet = in0;
+    if (packet.event_type == Midiglue::MIDIEventType::ControlChange) {
+        std::string paramValueStr;
+        std::string paramNameStr;
+        uint8_t sum = 0;
+        uint8_t aa = 0x10;
+        uint8_t bb = 0x00;
+        uint8_t cc = 0x00;
+        uint8_t dd = 0x00;
+        uint8_t ee = 0x00;
+        uint8_t ff = 0x00;
+
+        Int inputCcNumber = packet.getControlNumber();
+        Int inputCcValue = packet.getControlValue();
+        cc = paramData[inputCcNumber].cc;
+        dd = paramData[inputCcNumber].dd;
+
+        message.emplace_back(aa);
+        message.emplace_back(bb);
+        message.emplace_back(cc);
+        message.emplace_back(dd);
+
+        switch (inputCcNumber) {
+        case WAVEFORM:
+            cc = paramData_waveform.cc;
+            dd = paramData_waveform.dd;
+            message[9] = cc;
+            message[10] = dd;
+            if (inputCcValue == 0){ // SAW
+                message.emplace_back(127);
+                message.emplace_back(0);
+                message.emplace_back(0);
+                message.emplace_back(0);
+                message.emplace_back(0);
+                message.emplace_back(0);
+                message.emplace_back(0);
+                message.emplace_back(0);
+                message.emplace_back(1);
+                message.emplace_back(0);
+                message.emplace_back(0);
+                message.emplace_back(0);
+                message.emplace_back(0);
+                message.emplace_back(0);
+            } else { //SQR
+                message.emplace_back(0);
+                message.emplace_back(127);
+                message.emplace_back(0);
+                message.emplace_back(0);
+                message.emplace_back(0);
+                message.emplace_back(0);
+                message.emplace_back(0);
+                message.emplace_back(0);
+                message.emplace_back(0);
+                message.emplace_back(1);
+                message.emplace_back(0);
+                message.emplace_back(0);
+                message.emplace_back(0);
+                message.emplace_back(0);
+//                message.emplace_back(0, 127, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0);
+            };
+                sum = (128 - (aa + bb + cc + dd + 127 + 1) % 128);
+                paramNameStr = paramData_waveform.name;
+                paramValueStr = waveformStr[inputCcValue];
+             break;
+        case TUNE:
+            tuneValue = (Int)(inputCcValue *(paramData[TUNE].max - paramData[TUNE].min)/128 + paramData[TUNE].min)+1;
+            ee = tuneValue / 16;
+            ff = tuneValue - ee * 16; 
+            message.emplace_back(ee);
+            message.emplace_back(ff);
+            message.emplace_back(ee);
+            message.emplace_back(ff);
+            sum = (128 - (aa + bb + cc + dd + (ee + ff) * 2) % 128);
+            paramNameStr = paramData[TUNE].name;
+            paramValueStr = std::to_string(inputCcValue - paramData[TUNE].offset);
+            break;
+        case DECAY:
+            ee = inputCcValue;
+            message.emplace_back(ee);
+            sum = (128 - (aa + bb + cc + dd + ee) % 128);
+            paramNameStr = paramData[DECAY].name;
+            paramValueStr = std::to_string(inputCcValue - paramData[DECAY].offset);
+            break;
+        case CUTOFF:
+        case RESONANCE:
+        case ENV_MOD:
+        case ACCENT:
+            ee = (Int)inputCcValue * 2 / 16;
+            ff = (Int)inputCcValue * 2 - ee * 16;
+            message.emplace_back(ee);
+            message.emplace_back(ff);
+            sum = (128 - (aa + bb + cc + dd + ee + ff) % 128);
+            paramNameStr = paramData[inputCcNumber].name;
+            paramValueStr = std::to_string(inputCcValue - paramData[inputCcNumber].offset);
+            break;
+        default:
+            noFunction();
+            return;
+        }
+        if (sum == 128) {
+            sum = 0;
+        }
+        message.emplace_back(sum);
+        message.emplace_back(0xf7);
+        sysex.len = message.size();
+        sysex.buf = message.data();
+        out0 = sysex;
+        out1 = Midiglue::make_string(paramNameStr);
+        out2 = Midiglue::make_string(paramValueStr);
+    }
+}

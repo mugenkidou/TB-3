@@ -1,0 +1,309 @@
+<Comment>
+Copyright (c) 2020, mugenkidou, All Rights Reserved.
+
+<I/O>
+input MidiPacket : MIDI input
+output MidiSysEx : Output
+output String : Parameter Name
+output String : Parameter Value
+
+<Description>
+Construct Roland style SysEx data of TB-3 synth parameters.
+
+<Parameter>
+
+<Setup>
+
+<Code>
+std::vector<uint8_t> message{0xf0, 0x41, 0x10, 0x00, 0x00, 0x7b, 0x12};
+MidiSysEx sysex{0u, nullptr};
+struct TB3 {
+    std::string name;
+    uint8_t cc;
+    uint8_t dd;
+    uint8_t min;
+    uint8_t max;
+    uint8_t offset;
+    uint8_t length;  // 0:No Output, 1:1Byte, 2:2Bytes
+    uint8_t strType; // 0:Number, 1:OFF/ON
+};
+const TB3 paramData[] = {
+    {"CUTOFF",          0x0A, 0x00,  0, 127,  0, 2, 0}, //0 KNOB
+    {"RESONANCE",       0x0A, 0x02,  0, 127,  0, 2, 0},
+    {"ENV MOD",         0x0A, 0x04,  0, 127,  0, 2, 0},
+    {"ACCENT",          0x14, 0x0E,  0, 127,  0, 2, 0},
+    {"VCF ENV ATTACK",  0x0A, 0x06,  0, 127,  0, 1, 0},
+    {"VCF ENV DECAY",   0x0A, 0x07,  0, 127,  0, 1, 0},
+    {"VCF ENV SUSTAIN", 0x0A, 0x08,  0, 127,  0, 1, 0},
+    {"VCF ENV RELEASE", 0x0A, 0x09,  0, 127,  0, 1, 0},
+
+    {"SAW LEVEL",       0x08, 0x00,  0, 127,  0, 1, 0}, //8 SLIDER
+    {"SQR LEVEL",       0x08, 0x01,  0, 127,  0, 1, 0},
+    {"SIN LEVEL",       0x08, 0x04,  0, 127,  0, 1, 0},
+    {"NOISE LEVEL",     0x08, 0x05,  0, 127,  0, 1, 0},
+    {"CROSS MOD",       0x04, 0x00,  0, 127, 63, 1, 0},
+    {"GATE TIME",       0x00, 0x02,  0, 127, 63, 1, 0},
+    {"LFO RATE",        0x00, 0x00,  0, 127,  0, 1, 0},
+    {"LFO DEPTH",       0x00, 0x08,  0, 127, 63, 1, 0},
+
+    {"SAW SW",          0x08, 0x08,  0,   1,  0, 1, 1}, //16 S BUTTON
+    {"SQR SW",          0x08, 0x09,  0,   1,  0, 1, 1},
+    {"SIN SW",          0x08, 0x0A,  0,   1,  0, 1, 1},
+    {"NOISE SW",        0x08, 0x0B,  0,   1,  0, 1, 1},
+    {"ENV MODE",        0x00, 0x00,  0,   1,  0, 0, 4},
+    {"",                0x00, 0x00,  0,   0,  0, 0, 0},
+    {"LFO WAVE",        0x00, 0x02,  0,   1,  0, 0, 2},
+    {"LFO DEST",        0x00, 0x08,  0,   1,  0, 0, 3},
+
+    {"SAW TUNE",        0x02, 0x00,  0, 127, 63, 2, 0}, //24 M RUTTON
+    {"SQR TUNE",        0x02, 0x02,  0, 127, 63, 2, 0},
+    {"",                0x00, 0x00,  0,   0,  0, 0, 0},
+    {"",                0x00, 0x00,  0,   0,  0, 0, 0},
+    {"CROSS MOD",       0x04, 0x00, 63,  63, 63, 1, 0}, // RESET
+    {"GATE TIME",       0x00, 0x02, 63,  63, 63, 1, 0}, // RESET
+    {"",                0x00, 0x00,  0,   0,  0, 0, 0},
+    {"LFO DEPTH",       0x00, 0x08, 63,  63, 63, 1, 0}, // RESET
+
+    {"OSC SETTING",   0x00, 0x00,  0,   1,  0, 0, 5}, //32 R BUTTON
+    {"",                0x00, 0x00,  0,   0,  0, 0, 0},
+    {"",                0x00, 0x00,  0,   0,  0, 0, 0},
+    {"",                0x00, 0x00,  0,   0,  0, 0, 0},
+    {"",                0x00, 0x00,  0,   0,  0, 0, 0},
+    {"",                0x00, 0x00,  0,   0,  0, 0, 0},
+    {"LFO RETRIGGER",   0x00, 0x0C,  0,   1,  0, 1, 1},
+    {"LFO BPM SYNC",    0x00, 0x0B,  0,   1,  0, 1, 1}
+};
+const TB3 paramData_vca[] = {
+    {"VCA ENV ATTACK",  0x0C, 0x00,  0, 127,  0, 1, 0},
+    {"VCA ENV DECAY",   0x0C, 0x01,  0, 127,  0, 1, 0},
+    {"VCA ENV SUSTAIN", 0x0C, 0x02,  0, 127,  0, 1, 0},
+    {"VCA ENV RELEASE", 0x0C, 0x03,  0, 127,  0, 1, 0}
+};
+const TB3 paramData_tune[] = {
+    {"SAW TUNE",        0x02, 0x00,  0, 127, 63, 1, 0},
+    {"SQR TUNE",        0x02, 0x02,  0, 127, 63, 1, 0}
+};
+enum tb3_params {
+	CUTOFF = 0, RESONANCE, ENV_MOD, ACCENT, ATTACK, DECAY, SUSTAIN, RELEASE,
+	SAW, SQR, SIN, NOISE, CROSS_MOD, GATE_TIME, LFO_RATE, LFO_DEPTH,
+	SAW_SW, SQR_SW, SIN_SW, NOISE_SW, ENV_MODE, LFO_WAVE = 22, LFO_DEST,
+	SAW_TUNE_RESET, SQR_TUNE_RESET, CROSS_MOD_RESET = 28, GATE_TIME_RESET, LFO_DEPTH_RESET = 31,
+	OSC_TUNE_MODE, LFO_RETRIGGER=38, LFO_BPM_SYNC
+};
+const std::string offOnStr[] = {"OFF", "ON"};
+const std::string lfoWaveStr[] = {"SAW", "SQR", "TRI", "SIN", "S&H"};
+const std::string lfoDestStr[] = {"OFF", "PITCH", "CUTOFF", "VOLUME"};
+const std::string envModeStr[] = {"VCF", "VCA"};
+const std::string tuneModeStr[] = {"LEVEL", "TUNE"};
+const Int LFO_DEST_NUM = 4;
+const Int LFO_WAVE_NUM = 5;
+static Int envMode = 0;
+static Int tuneMode = 0;
+static Int lfoWave = 0;
+static Int lfoDest = 0;
+static Int lfoDepth = 0;
+
+auto noFunction = [](){
+    out1 = Midiglue::make_string("-");
+    out2 = Midiglue::make_string("-");
+};
+
+if (@in0){
+    MidiPacket packet = in0;
+    if (packet.event_type == Midiglue::MIDIEventType::ControlChange) {
+        std::string paramValueStr;
+        std::string paramNameStr;
+        uint8_t sum = 0;
+        uint8_t aa = 0x10;
+        uint8_t bb = 0x00;
+        uint8_t cc = 0x00;
+        uint8_t dd = 0x00;
+        uint8_t ee = 0x00;
+        uint8_t ff = 0x00;
+
+        Int inputCcNumber = packet.getControlNumber();
+        Int inputCcValue = packet.getControlValue();
+        inputCcValue = std::min(std::max((Int)paramData[inputCcNumber].min, inputCcValue), (Int)paramData[inputCcNumber].max);
+        cc = paramData[inputCcNumber].cc;
+        dd = paramData[inputCcNumber].dd;
+
+        message.emplace_back(aa);
+        message.emplace_back(bb);
+        message.emplace_back(cc);
+        message.emplace_back(dd);
+
+        switch (inputCcNumber) {
+        case ENV_MODE:
+        case OSC_TUNE_MODE:
+            if (inputCcNumber == ENV_MODE) {
+                envMode = inputCcValue;
+                paramValueStr = envModeStr[envMode];
+            } else {
+                tuneMode = inputCcValue;
+                paramValueStr = tuneModeStr[tuneMode];
+            }
+            paramNameStr = paramData[inputCcNumber].name;
+            out1 = Midiglue::make_string(paramNameStr);
+            out2 = Midiglue::make_string(paramValueStr);
+            return;
+        case LFO_WAVE:
+            if (inputCcValue == 1){
+                lfoWave++;
+                if (lfoWave ==LFO_WAVE_NUM){
+                    lfoWave = 0;
+                }
+            } else {
+                return;
+            }
+            for (Int i=0;i<6;i++){ //reset LFO WAVE levels.
+                message.emplace_back(0x00);
+            }
+            if (lfoWave == 4) {
+                message[11 + lfoWave + 1] = 127; //set LFO WAVE.
+            } else {
+                message[11 + lfoWave] = 127; //set LFO WAVE.
+            }
+            sum = (128 - (aa + bb + cc + dd + 127) % 128);
+            paramNameStr = paramData[inputCcNumber].name;
+            paramValueStr = lfoWaveStr[lfoWave];
+            break;
+        case LFO_DEST:
+            if (inputCcValue == 1){
+                lfoDest++;
+                if (lfoDest == LFO_DEST_NUM){
+                    lfoDest = 0;
+                }
+            } else {
+                return;
+            }
+            paramNameStr = paramData[LFO_DEST].name;
+            paramValueStr = lfoDestStr[lfoDest];
+        case LFO_DEPTH:
+        case LFO_DEPTH_RESET:
+            if (inputCcNumber == LFO_DEPTH_RESET) {
+                lfoDepth = paramData[LFO_DEPTH_RESET].offset;
+            } else if (inputCcNumber == LFO_DEPTH) {
+                lfoDepth = inputCcValue;
+            }
+            for (Int i=0;i<3;i++){
+                message.emplace_back(paramData[LFO_DEPTH].offset);
+            }
+            if (lfoDest == 0) {
+                sum = (128 - (aa + bb + cc + dd + paramData[LFO_DEPTH].offset * 3) % 128);
+            } else {
+                message[11 + lfoDest - 1] = lfoDepth;
+                sum = (128 - (aa + bb + cc + dd + lfoDepth + paramData[LFO_DEPTH].offset * 2) % 128);
+            }
+            if ((inputCcNumber == LFO_DEPTH)||(inputCcNumber == LFO_DEPTH_RESET)){
+                paramNameStr = paramData[LFO_DEPTH].name;
+                paramValueStr = std::to_string(lfoDepth - paramData[LFO_DEPTH].offset);
+            }
+            break;
+        case ATTACK:
+        case DECAY:
+        case SUSTAIN:
+        case RELEASE:
+            if (envMode == 0) { // VCF
+                paramNameStr = paramData[inputCcNumber].name;
+            } else if (envMode == 1){ // VCA
+                cc = paramData_vca[inputCcNumber - ATTACK].cc;
+                dd = paramData_vca[inputCcNumber - ATTACK].dd;
+                message[9] = cc;
+                message[10] = dd;
+                paramNameStr = paramData_vca[inputCcNumber - ATTACK].name;
+            }
+            message.emplace_back(inputCcValue);
+            sum = (128 - (aa + bb + cc + dd + inputCcValue) % 128);
+            paramValueStr = std::to_string(inputCcValue);
+            break;
+        case SAW:
+        case SQR:
+        case SIN:
+        case NOISE:
+            if (tuneMode == 0){ // SAW/SQR/SIN/NOISE LEVEL
+                message.emplace_back(inputCcValue);
+                sum = (128 - (aa + bb + cc + dd + inputCcValue) % 128);
+                paramNameStr = paramData[inputCcNumber].name;
+                paramValueStr = std::to_string(inputCcValue);
+            } else { // SAW/SQR TUNE
+                switch (inputCcNumber){
+                    case SAW: // SAW TUNE
+                    case SQR: // SQR TUNE
+                        cc = paramData_tune[inputCcNumber - SAW].cc;
+                        dd = paramData_tune[inputCcNumber - SAW].dd;
+                        message[9] = cc;
+                        message[10] = dd;
+                        ee = (inputCcValue) / 16;
+                        ff = (inputCcValue) - ee * 16;
+                        message.emplace_back(ee);
+                        message.emplace_back(ff);
+                        sum = (128 - (aa + bb + cc + dd + ee + ff) % 128);
+                        paramNameStr = paramData_tune[inputCcNumber - SAW].name;
+                        paramValueStr = std::to_string(inputCcValue - paramData_tune[inputCcNumber - SAW].offset);
+                        break;
+                    default:
+                        noFunction();
+                        return;
+                }
+            }
+            break;
+        case SAW_TUNE_RESET:
+        case SQR_TUNE_RESET:
+            if (tuneMode == 1) {
+                cc = paramData_tune[inputCcNumber - SAW_TUNE_RESET].cc;
+                dd = paramData_tune[inputCcNumber - SAW_TUNE_RESET].dd;
+                ee = paramData_tune[inputCcNumber - SAW_TUNE_RESET].offset / 16;
+                ff = paramData_tune[inputCcNumber - SAW_TUNE_RESET].offset - ee * 16;
+                message.emplace_back(ee);
+                message.emplace_back(ff);
+                sum = (128 - (aa + bb + cc + dd + ee + ff) % 128);
+                paramNameStr = paramData_tune[inputCcNumber - SAW_TUNE_RESET].name;
+                paramValueStr = std::to_string(0);
+                break;
+            } else {
+                noFunction();
+                return;
+            }
+        case GATE_TIME:
+        case GATE_TIME_RESET:
+            aa = 0x30;
+            bb = 0x00;
+            message[7] = aa;
+            message[8] = bb;
+        default:
+            if (paramData[inputCcNumber].length == 0){
+                noFunction();
+                return;
+            }
+            if (paramData[inputCcNumber].length == 1) {
+                ee = inputCcValue;
+                ff = 0;
+                message.emplace_back(ee);
+            } else {
+                ee = inputCcValue * 2 / 16;
+                ff = inputCcValue * 2 - ee * 16;
+                message.emplace_back(ee);
+                message.emplace_back(ff);
+            }
+            sum = (128 - (aa + bb + cc + dd + ee + ff) % 128);
+            paramNameStr = paramData[inputCcNumber].name;
+            if (paramData[inputCcNumber].strType == 0) { // display number
+                paramValueStr = std::to_string(inputCcValue - paramData[inputCcNumber].offset);
+            } else if (paramData[inputCcNumber].strType == 1) { // display OFF/ON
+                paramValueStr = offOnStr[inputCcValue];
+            }
+            break;
+        break;
+        }
+        if (sum == 128) {
+            sum = 0;
+        }
+        message.emplace_back(sum);
+        message.emplace_back(0xf7);
+        sysex.len = message.size();
+        sysex.buf = message.data();
+        out0 = sysex;
+        out1 = Midiglue::make_string(paramNameStr);
+        out2 = Midiglue::make_string(paramValueStr);
+    }
+}

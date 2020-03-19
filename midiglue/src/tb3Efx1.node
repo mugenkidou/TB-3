@@ -1,0 +1,281 @@
+<Comment>
+Copyright (c) 2020, mugenkidou, All Rights Reserved.
+
+<I/O>
+input MidiPacket : MIDI input
+output MidiSysEx : Output
+output String : Parameter Name
+output String : Parameter Value
+
+<Description>
+Construct Roland style SysEx data of TB-3 EFX1.
+
+<Parameter>
+
+<Setup>
+
+<Code>
+std::vector<uint8_t> message{0xf0, 0x41, 0x10, 0x00, 0x00, 0x7b, 0x12};
+MidiSysEx sysex{0u, nullptr};
+struct TB3 {
+    std::string name;
+    uint8_t cc;
+    uint8_t dd;
+    uint8_t min;
+    uint8_t max;
+    uint8_t offset;
+    uint8_t length;  // 0:No Output, 1:1Byte, 2:2Bytes
+    uint8_t strType; // 0:Number, 1:OFF/ON
+};
+enum tb3_params {
+	KNOB_1 = 0, KNOB_2, KNOB_3, KNOB_4, KNOB_5, KNOB_6, KNOB_7, KNOB_8, // Knob
+    EFX_TYPE, FADER_3 = 10, FADER_4, FADER_5, FADER_8 = 15, // Fader
+    EFX_SW //Button
+};
+enum tb3_efx_type {
+    BYPASS = 0, CS, RM, BC, TR, CH, FL, PH
+};
+enum tb3_efx_str {
+    NUMBER, OFF_ON, KNEE, POLARITY, TR_TYPE, BPM_SYNC, PAN_TYPE, CHORUS_MODE, PAHSER_TYPE, DD_TYPE, PS_MODE
+};
+const TB3 paramData[] = {
+//  Parameter Name       cc    dd min max offset length strType
+    {"CS:ATTACK",       0x10, 0x02, 0, 124,  0, 1, NUMBER},      // 1
+    {"CS:RELEASE",      0x10, 0x03, 0, 124,  0, 1, NUMBER},      // 2
+    {"CS:THRESHOLD",    0x10, 0x04, 0,  40, 20, 1, NUMBER},      // 3
+    {"CS:RATIO",        0x10, 0x05, 0,  13,  0, 1, NUMBER},      // 4
+    {"CS:KNEE",         0x10, 0x06, 0,   9,  0, 1, KNEE},        // 5
+    {"CS:GAIN",         0x10, 0x07, 0,  80, 40, 1, NUMBER},      // 6
+    {"",                0xFF, 0xFF, 0,   0,  0, 0, NUMBER},      // 7
+    {"CS:DRY/WET",      0x10, 0x08, 0, 100, 50, 1, NUMBER},      // 8
+
+    {"RM:FREQUENCY",   0x10, 0x0A, 0, 127,  0, 1, NUMBER},      // 1
+    {"RM:SENS",        0x10, 0x0B, 0, 127,  0, 1, NUMBER},      // 2
+    {"RM:POLARITY",    0x10, 0x0C, 0,   1,  0, 1, POLARITY},    // 3
+    {"RM:EQ LOW",      0x10, 0x0D, 0,  30, 15, 1, NUMBER},      // 4
+    {"RM:EQ HIGH",     0x10, 0x0E, 0,  30, 15, 1, NUMBER},      // 5
+    {"",               0xFF, 0xFF, 0,   0,  0, 0, NUMBER},      // 6
+    {"",               0xFF, 0xFF, 0,   0,  0, 0, NUMBER},      // 7
+    {"RM:DRY/WET",     0x10, 0x0F, 0, 100, 50, 2, NUMBER},      // 8
+
+    {"BC:FILTER",      0x10, 0x12, 0, 127,  0, 1, NUMBER},      // 1
+    {"BC:SAMPLE RATE", 0x10, 0x13, 0, 127,  0, 1, NUMBER},      // 2
+    {"BC:EQ LOW",      0x10, 0x15, 0,  30, 15, 1, NUMBER},      // 3
+    {"BC:EQ HIGH",     0x10, 0x16, 0,  30, 15, 1, NUMBER},      // 4
+    {"",               0xFF, 0xFF, 0,   0,  0, 0, NUMBER},      // 5
+    {"",               0xFF, 0xFF, 0,   0,  0, 0, NUMBER},      // 6
+    {"",               0xFF, 0xFF, 0,   0,  0, 0, NUMBER},      // 7
+    {"BC:LEVEL",       0x10, 0x17, 0, 127,  0, 1, NUMBER},      // 8
+
+    {"TR:TYPE",        0x10, 0x19, 0,   5,  0, 1, TR_TYPE},     // 1
+    {"TR:PHASE",       0x10, 0x1A, 0, 100,  0, 1, NUMBER},      // 2
+    {"TR:RATE",        0x10, 0x1B, 0, 100,  0, 1, NUMBER},      // 3
+    {"TR:BPM SYNC",    0x10, 0x1C, 0,  20,  0, 1, BPM_SYNC},    // 4
+    {"TR:SHAPE",       0x10, 0x1D, 0, 100,  0, 1, NUMBER},      // 5
+    {"TR:DEPTH",       0x10, 0x1E, 0, 100,  0, 1, NUMBER},      // 6
+    {"TR:PAN SELECT",  0x10, 0x1F, 0,   1,  0, 1, PAN_TYPE},    // 7
+    {"TR:LEVEL",       0x10, 0x20, 0, 100,  0, 1, NUMBER},      // 8
+
+    {"CH:MODE",        0x10, 0x22, 0,   2,  0, 1, CHORUS_MODE}, // 1
+    {"CH:RATE",        0x10, 0x23, 0, 100,  0, 1, NUMBER},      // 2
+    {"CH:BPM SYNC",    0x10, 0x24, 0,  20,  0, 1, BPM_SYNC},    // 3
+    {"CH:DEPTH",       0x10, 0x25, 0, 100,  0, 1, NUMBER},      // 4
+    {"CH:PRE DELAY",   0x10, 0x26, 0,  80,  0, 1, NUMBER},      // 5
+    {"CH:HPF",         0x10, 0x27, 0,  17,  0, 1, NUMBER},      // 6
+    {"CH:LPF",         0x10, 0x28, 0,  14,  0, 1, NUMBER},      // 7
+    {"CH:LEVEL",       0x10, 0x29, 0, 100,  0, 1, NUMBER},      // 8
+
+    {"FL:RATE",        0x10, 0x2B, 0, 100,  0, 1, NUMBER},      // 1
+    {"FL:BPM SYNC",    0x10, 0x2C, 0,  20,  0, 1, BPM_SYNC},    // 2
+    {"FL:DEPTH",       0x10, 0x2D, 0, 100,  0, 1, NUMBER},      // 3
+    {"FL:MANUAL",      0x10, 0x2E, 0, 100, 50, 1, NUMBER},      // 4
+    {"FL:RESONANCE",   0x10, 0x2F, 0, 100,  0, 1, NUMBER},      // 5
+    {"FL:SEPARATION",  0x10, 0x30, 0, 100,  0, 1, NUMBER},      // 6
+    {"FL:HPF",         0x10, 0x31, 0,  10,  0, 1, NUMBER},      // 7
+    {"FL:DRY/WET",     0x10, 0x32, 0, 100,  0, 2, NUMBER},      // 8
+
+    {"PH:TYPE",        0x10, 0x35, 0,   3,  0, 1, PAHSER_TYPE}, // 1
+    {"PH:RATE",        0x10, 0x36, 0, 100,  0, 1, NUMBER},      // 2
+    {"PH:BPM SYNC",    0x10, 0x37, 0,  20,  0, 1, BPM_SYNC},    // 3
+    {"PH:DEPTH",       0x10, 0x38, 0, 100,  0, 1, NUMBER},      // 4
+    {"PH:MANUAL",      0x10, 0x39, 0, 100, 50, 1, NUMBER},      // 5
+    {"PH:RESONANCE",   0x10, 0x3A, 0, 127,  0, 1, NUMBER},      // 6
+    {"PH:STEP RATE",   0x10, 0x3B, 0,  20,  0, 1, NUMBER},      // 7
+    {"PH:DRY/WET",     0x10, 0x3C, 0, 100,  0, 2, NUMBER}       // 8
+};
+const TB3 paramData_sw[] = {
+//  Parameter Name        cc    dd  min  max offset length strType
+    {"CS:SW",          0x10, 0x01, 0,   1,  0, 1, OFF_ON}, 
+    {"RM:SW",          0x10, 0x09, 0,   1,  0, 1, OFF_ON}, 
+    {"BC:SW",          0x10, 0x11, 0,   1,  0, 1, OFF_ON}, 
+    {"TR:SW",          0x10, 0x18, 0,   1,  0, 1, OFF_ON},
+    {"CH:SW",          0x10, 0x21, 0,   1,  0, 1, OFF_ON},
+    {"FL:SW",          0x10, 0x2A, 0,   1,  0, 1, OFF_ON},
+    {"PH:SW",          0x10, 0x34, 0,   1,  0, 1, OFF_ON},
+};
+const TB3 paramData_type = 
+    {"EFX1 TYPE",       0x10, 0x00, 0,  7,  0, 1, NUMBER};
+const std::string efxTypeStr[] = {"BYPASS", "COMPRESSOR", "RING MODULATOR", "BIT CRUSHER", "TREMOLO", "CHORUS", "FLANGER", "PHASER"};
+const std::string offOnStr[] = {"OFF", "ON"}; // 1
+const std::string kneeStr[] = {"Hard", "Soft1", "Soft2", "Soft3", "Soft4", "Soft5", "Soft6", "Soft7", "Soft8", "Soft9"}; //2
+const std::string polarityStr[] = {"UP", "DOWN"}; //3
+const std::string trTypeStr[] ={"TRI", "SAW1", "SAW2", "SIN", "SQUARE", "RAND"}; //4
+const std::string bpmSyncStr[] = {"OFF", "2", "3/2", "4/3", "1", "3/4", "2/3", "1/2", "3/8", "1/3", "1/4", "3/16", "1/6", "1/8", "3/32", "1/12", "1/16", "3/64", "1/24", "1/32", "3/128"}; //5
+const std::string panTypeStr[] = {"TRE", "PAN"}; //6
+const std::string chorusModeStr[] = {"MONO", "STEREO1", "STEREO2"}; //7
+const std::string phaserTypeStr[] = {"4Stage", "8Stage", "12Stage", "BI-Phase"}; // 8
+const Int EFX_PARAM_NUM = 8;
+
+static Int efxType = 0;
+
+auto noFunction = [](){
+    out1 = Midiglue::make_string("-");
+    out2 = Midiglue::make_string("-");
+};
+
+if (@in0){
+    MidiPacket packet = in0;
+    if (packet.event_type == Midiglue::MIDIEventType::ControlChange) {
+        std::string paramValueStr;
+        std::string paramNameStr;
+        uint8_t sum = 0;
+        uint8_t aa = 0x10;
+        uint8_t bb = 0x00;
+        uint8_t cc = 0x00;
+        uint8_t dd = 0x00;
+        uint8_t ee = 0x00;
+        uint8_t ff = 0x00;
+
+        Int inputCcNumber = packet.getControlNumber();
+        Int inputCcValue = packet.getControlValue();
+        cc = paramData[(efxType - 1) * EFX_PARAM_NUM + inputCcNumber].cc;
+        dd = paramData[(efxType - 1) * EFX_PARAM_NUM + inputCcNumber].dd;
+
+        message.emplace_back(aa);
+        message.emplace_back(bb);
+        message.emplace_back(cc);
+        message.emplace_back(dd);
+
+        if (cc == 0xFF){
+            noFunction();
+            return;
+        }
+        switch (inputCcNumber) {
+        case EFX_TYPE:
+            efxType = (Int)((inputCcValue + 1) * paramData_type.max / 128);
+            cc = paramData_type.cc;
+            dd = paramData_type.dd;
+            message[9] = cc;
+            message[10] = dd;
+            paramNameStr = paramData_type.name;
+            message.emplace_back(efxType);
+            sum = (128 - (aa + bb + cc + dd + efxType) % 128);
+            paramValueStr = efxTypeStr[efxType];
+            break;
+        case EFX_SW:
+            if (efxType == 0) {
+                noFunction();
+                return;
+            }
+            cc = paramData_sw[efxType - 1].cc;
+            dd = paramData_sw[efxType - 1].dd;
+            message[9] = cc;
+            message[10] = dd;
+            message.emplace_back(inputCcNumber);
+            sum = (128 - (aa + bb + cc + dd + inputCcValue) % 128);
+            paramNameStr = paramData_sw[efxType - 1].name;
+            paramValueStr = offOnStr[inputCcValue];
+            break;
+        case KNOB_8:
+            if (efxType == 0) {
+                noFunction();
+                return;
+            }
+            if (efxType == RM){
+                ee = (Int)(paramData[(efxType - 1) * EFX_PARAM_NUM + inputCcNumber].max + 1) * inputCcValue / 128;
+                ff = paramData[(efxType - 1) * EFX_PARAM_NUM + inputCcNumber].max;
+                message.emplace_back(ee);
+                message.emplace_back(ff);
+                sum = (128 - (aa + bb + cc + dd + ee + ff) % 128);
+                paramNameStr = paramData[(efxType - 1) * EFX_PARAM_NUM + inputCcNumber].name;
+                paramValueStr = std::to_string(ee - paramData[(efxType - 1) * EFX_PARAM_NUM + inputCcNumber].offset);
+                break;
+            }
+            if (paramData[(efxType - 1) * EFX_PARAM_NUM + inputCcNumber].length == 2){
+                ee = (Int)(paramData[(efxType - 1) * EFX_PARAM_NUM + inputCcNumber].max + 1) * inputCcValue / 128;
+                ff = paramData[(efxType - 1) * EFX_PARAM_NUM + inputCcNumber].max - ee;
+                message.emplace_back(ee);
+                message.emplace_back(ff);
+                sum = (128 - (aa + bb + cc + dd + ee + ff) % 128);
+                paramNameStr = paramData[(efxType - 1) * EFX_PARAM_NUM + inputCcNumber].name;
+                paramValueStr = std::to_string(ee - paramData[(efxType - 1) * EFX_PARAM_NUM + inputCcNumber].offset);
+            } else {
+                ee = (Int)(paramData[(efxType - 1) * EFX_PARAM_NUM + inputCcNumber].max + 1) * inputCcValue / 128;
+                message.emplace_back(ee);
+                sum = (128 - (aa + bb + cc + dd + ee) % 128);
+                paramNameStr = paramData[(efxType - 1) * EFX_PARAM_NUM + inputCcNumber].name;
+                paramValueStr = std::to_string(ee - paramData[(efxType - 1) * EFX_PARAM_NUM + inputCcNumber].offset);
+            }
+            break;
+        case KNOB_1:
+        case KNOB_2:
+        case KNOB_3:
+        case KNOB_4:
+        case KNOB_5:
+        case KNOB_6:
+        case KNOB_7:
+            if (efxType == 0) {
+                noFunction();
+                return;
+            }
+            ee = (paramData[(efxType - 1) * EFX_PARAM_NUM + inputCcNumber].max + 1) * inputCcValue /128;
+            message.emplace_back(ee);
+            sum = (128 - (aa + bb + cc + dd + ee) % 128);
+            paramNameStr = paramData[(efxType - 1) * EFX_PARAM_NUM + inputCcNumber].name;
+            switch (paramData[(efxType - 1) * EFX_PARAM_NUM + inputCcNumber].strType) {
+            case 0:
+                paramValueStr = std::to_string(ee - paramData[(efxType - 1) * EFX_PARAM_NUM + inputCcNumber].offset);
+                break;
+            case OFF_ON:
+                paramValueStr = offOnStr[ee];
+                break;
+            case KNEE:
+                paramValueStr = kneeStr[ee];
+                break;
+            case TR_TYPE:
+                paramValueStr = trTypeStr[ee];
+                break;
+            case BPM_SYNC:
+                paramValueStr = bpmSyncStr[ee];
+                break;
+            case PAN_TYPE:
+                paramValueStr = panTypeStr[ee];
+                break;
+            case CHORUS_MODE:
+                paramValueStr = chorusModeStr[ee];
+                break;
+            case PAHSER_TYPE:
+                paramValueStr = phaserTypeStr[ee];
+                break;
+            case POLARITY:
+                paramValueStr = polarityStr[ee];
+                break;
+            }
+            break;
+        default:
+            out1 = Midiglue::make_string("-");
+            out2 = Midiglue::make_string("-");
+            return;
+        }
+        if (sum == 128) {
+            sum = 0;
+        }
+        message.emplace_back(sum);
+        message.emplace_back(0xf7);
+        sysex.len = message.size();
+        sysex.buf = message.data();
+        out0 = sysex;
+        out1 = Midiglue::make_string(paramNameStr);
+        out2 = Midiglue::make_string(paramValueStr);
+    }
+}

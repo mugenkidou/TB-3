@@ -1,0 +1,72 @@
+<Comment>
+Copyright (c) 2018-2020, sigboost, inc., All Rights Reserved.
+This file is licensed under a Creative Commons Attribution 4.0 International (CC BY 4.0) license.
+
+<I/O>
+output Int : Current value
+
+<Description>
+Knob.
+If you select combination button, rotation of the knob is counted only while the specified button is pressed.
+NOTE:
+When UseCombination = false, and more than one of buttons are pushed, rotation is not counted.
+
+<Parameter>
+parameter Knob = ["KNOB_L", "KNOB_R"] : Target knob
+parameter Min = 0 : Min value
+parameter Max = 127 : Max value
+parameter Initial = 0 : Initial value
+parameter UseCombination = false : Use combination button or not
+parameter Combination = ["BUTTON_A", "BUTTON_B", "BUTTON_L", "BUTTON_R"] : Button to use in combination with the knob
+
+<Setup>
+Midiglue::attach(Midiglue::${Knob}, ${this}, 0, Midiglue::DataCategory::Logic);
+if (${UseCombination}){
+    Midiglue::attach(Midiglue::${Combination}, ${this}, 0, Midiglue::DataCategory::Logic);
+}else{
+    Midiglue::attach(Midiglue::BUTTON_A, ${this}, 0, Midiglue::DataCategory::Logic);
+    Midiglue::attach(Midiglue::BUTTON_B, ${this}, 0, Midiglue::DataCategory::Logic);
+    Midiglue::attach(Midiglue::BUTTON_L, ${this}, 0, Midiglue::DataCategory::Logic);
+    Midiglue::attach(Midiglue::BUTTON_R, ${this}, 0, Midiglue::DataCategory::Logic);
+}
+${this}( &(Midiglue::__bang), Midiglue::SETUP );
+
+<Code>
+static Int min = ${Min};
+static Int max = ${Max};
+static Int val = ${Initial};
+static bool active = ${UseCombination} ? false : true;
+static Int pushed_buttons = 0;
+
+if (@knob){
+    if (active){
+        Int diff = (Int)*(Int*)(_data);
+        val += diff;
+        if (val < min){
+            val = max;
+        } else 
+        if (val > max) {
+            val = min;
+        }
+//        val = std::min(std::max(val,min),max);
+        out0 = val;
+    }
+}else if(@button){
+    if (${UseCombination}){
+        active = ((Int)*(unsigned char*)(_data)!=0);
+    }else{
+        Int state = (Int)*(unsigned char*)(_data);
+        if (state){
+            pushed_buttons++;
+        }else{
+            pushed_buttons--;
+        }
+        if (pushed_buttons < 0){
+            pushed_buttons = 0;
+        }
+        active = (pushed_buttons==0);
+    }
+}else if (@setup){
+    out0 = val;
+}
+
